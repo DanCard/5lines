@@ -1,8 +1,25 @@
-/*
+/*  Limit output to last 5 lines.
+
+    Copyright (C) 2015  Daniel Cardenas
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
  * 
  * Todo:  Would like default name of log file to base on program name executed prior to pipe, but
  *        don't know how to retrieve that.
  * 
+ * Compile:
+ *   gcc -o 5lines 5lines.c -lncurses
  */
 #include <curses.h>
 #include <stdlib.h>
@@ -72,14 +89,14 @@ int main(int argc, char * const * argv) {
             }
             space_loc++;
         }
-        int last_char_loc = space_loc - 1;
+        int last_char_loc = space_loc;
         if (last_char_loc > 123 ) last_char_loc = 123;
         strncpy(filename, buffer[buf_index], last_char_loc);
         strcpy(&filename[last_char_loc], ".log");
-        printf("Log file: %s\n", filename );
+        printf("\t\t\t\tLog file: %s\n", filename );
     }
     log_file = fopen(filename, "w");
-
+    
     // Set up for ncurses
     const char* term_type = getenv("TERM");
     if (term_type == NULL || *term_type == '\0') {
@@ -93,21 +110,24 @@ int main(int argc, char * const * argv) {
     SCREEN* main_screen = newterm(term_type, stdout, term_in);
     set_term(main_screen);
     scrollok(stdscr, TRUE);
+    leaveok(stdscr, TRUE);
+    raw();
+    // Done setting up ncurses
 
+    // Read input and write output loop
     while(fgets_return != NULL) {
         printw("%s\r", buffer[buf_index]);
+        refresh();      // Ask ncurses to update the screen.
         fputs(buffer[buf_index], log_file); 
         buf_index++;
         if (buf_index >= num_buffers) buf_index = 0;
         fgets_return = fgets(buffer[buf_index], LINE_BUFFER_SIZE, stdin);
     }
-    getch();
-    endwin();
+    endwin();   // ncurses mode exit.
 
     // Log the last few lines to stdout.
     int j;
     for (j = 0; j < n_screen_log_lines; j++) {
-        //printf("\t i: %d \t", buf_index);
         fputs(buffer[buf_index], stdout);
         buf_index += 1;
         if (buf_index >= n_screen_log_lines) buf_index = 0;
