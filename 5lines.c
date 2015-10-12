@@ -90,7 +90,9 @@ int main(int argc, char * const * argv) {
             space_loc++;
         }
         int last_char_loc = space_loc;
+        if (buffer[buf_index][last_char_loc] != ' ') last_char_loc -= 1;
         if (last_char_loc > 123 ) last_char_loc = 123;
+        if (last_char_loc < 0 ) last_char_loc = 0;
         strncpy(filename, buffer[buf_index], last_char_loc);
         strcpy(&filename[last_char_loc], ".log");
         printf("\t\t\t\tLog file: %s\n", filename );
@@ -111,12 +113,13 @@ int main(int argc, char * const * argv) {
     set_term(main_screen);
     scrollok(stdscr, TRUE);
     leaveok(stdscr, TRUE);
+    idlok(stdscr, TRUE);
     raw();
     // Done setting up ncurses
 
     // Read input and write output loop
     while(fgets_return != NULL) {
-        printw("%s\r", buffer[buf_index]);
+        printw("%s", buffer[buf_index]);
         refresh();      // Ask ncurses to update the screen.
         fputs(buffer[buf_index], log_file); 
         buf_index++;
