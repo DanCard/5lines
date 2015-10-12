@@ -114,7 +114,6 @@ int main(int argc, char * const * argv) {
     scrollok(stdscr, TRUE);
     leaveok(stdscr, TRUE);
     idlok(stdscr, TRUE);
-    raw();
     // Done setting up ncurses
 
     // Read input and write output loop
