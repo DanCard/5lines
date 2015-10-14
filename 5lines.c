@@ -27,7 +27,7 @@
 #include <unistd.h>
 // For sigwinch
 #include <signal.h>
-#include <termios.h>
+#include <sys/time.h>
 
 #define LINE_BUFFER_SIZE 8192
 
@@ -37,7 +37,7 @@ int ncurses_active = TRUE;
 static void setup_ncurses();
 
 static void catch_alarm(int signo) {
-    printf("\t\t\t\t\tAlarm caught.\n");
+    //printf("\t\t\t\t\tAlarm caught.\n");
     setup_ncurses();
 }
 
@@ -45,7 +45,7 @@ static void catch_alarm(int signo) {
 static void catch_sigwinch(int signo) {
     if (ncurses_active) {
         ncurses_active = FALSE;
-        printf("\t\t\t\t\tKilling curses because of sigwinch.\n");
+        //printf("\t\t\t\t\tKilling curses because of sigwinch.\n");
         endwin();
         if (signal(SIGALRM, catch_alarm) == SIG_ERR) {  // Install alarm handler
             fputs("\t\t\t\t\tAn error occurred when setting alarm signal handler.\n", stderr);
@@ -55,7 +55,7 @@ static void catch_sigwinch(int signo) {
             printf("\t\t\t\t\tPrevious alarm pending.\n");
         }
     }
-    printf("\t\t\t\t\tScreen size change.  ");
+    //printf("\t\t\t\t\tScreen size change.  ");
 }
 
 
@@ -66,7 +66,7 @@ static void setup_ncurses() {
     scrollok(stdscr, TRUE);  // If enabled the window is scrolled up one line when reaching bottom
     leaveok(stdscr, TRUE);
     idlok(stdscr, TRUE);     // Use the hardware insert/delete line feature of terminals so equipped
-    printf("\t\t\t\t\tncurses set up.\n");
+    //printf("\t\t\t\t\tncurses set up.\n");
     if (signal(SIGWINCH, catch_sigwinch) == SIG_ERR) {
         fputs("\t\t\t\t\tAn error occurred when setting up SIGWINCH signal handler.\n", stderr);
     }
@@ -78,6 +78,8 @@ int main(int argc, char * const * argv) {
     char *cvalue = NULL;
     int index;
     int option;
+    struct timeval start_time;
+    gettimeofday(&start_time, NULL);
 
     opterr = 0;
     while ((option = getopt (argc, argv, "0123456789n:")) != -1)
@@ -157,10 +159,28 @@ int main(int argc, char * const * argv) {
     setup_ncurses();
     // Done setting up ncurses
 
+    int throttle_mode = TRUE;
+    
     // Read input and write output loop
     while(fgets_return != NULL) {
-        printw("%s\r", buffer[buf_index]);
-        refresh();      // Ask ncurses to update the screen.
+        if (ncurses_active) {
+            /*
+            struct timeval end_time;
+            gettimeofday(&end_time, NULL);
+            long usec = end_time.tv_usec - start_time.tv_usec;
+            int long_time_elapsed = (usec < 0 || usec > (1000 * 10));
+            int c = getchar();
+            ungetc(c, stdin);
+            int input_waiting = (c != EOF); 
+            if (!input_waiting || long_time_elapsed) {
+            */
+                printw("%s", buffer[buf_index]);
+                refresh();      // Ask ncurses to update the screen.
+                /*
+                gettimeofday(&start_time, NULL);
+            }
+            */
+        }
         fputs(buffer[buf_index], log_file); 
         buf_index++;
         if (buf_index >= num_buffers) buf_index = 0;
