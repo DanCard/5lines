@@ -25,8 +25,53 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+// For sigwinch
+#include <signal.h>
+#include <termios.h>
 
 #define LINE_BUFFER_SIZE 8192
+
+const char* term_type;
+FILE* term_in;
+int ncurses_active = TRUE;
+static void setup_ncurses();
+
+static void catch_alarm(int signo) {
+    printf("\t\t\t\t\tAlarm caught.\n");
+    setup_ncurses();
+}
+
+
+static void catch_sigwinch(int signo) {
+    if (ncurses_active) {
+        ncurses_active = FALSE;
+        printf("\t\t\t\t\tKilling curses because of sigwinch.\n");
+        endwin();
+        if (signal(SIGALRM, catch_alarm) == SIG_ERR) {  // Install alarm handler
+            fputs("\t\t\t\t\tAn error occurred when setting alarm signal handler.\n", stderr);
+            return;
+        }
+        if (alarm(1) < 0) {        // Wait a second.
+            printf("\t\t\t\t\tPrevious alarm pending.\n");
+        }
+    }
+    printf("\t\t\t\t\tScreen size change.  ");
+}
+
+
+static void setup_ncurses() {
+    ncurses_active = TRUE;
+    SCREEN* main_screen = newterm(term_type, stdout, term_in);
+    set_term(main_screen);
+    scrollok(stdscr, TRUE);  // If enabled the window is scrolled up one line when reaching bottom
+    leaveok(stdscr, TRUE);
+    idlok(stdscr, TRUE);     // Use the hardware insert/delete line feature of terminals so equipped
+    printf("\t\t\t\t\tncurses set up.\n");
+    if (signal(SIGWINCH, catch_sigwinch) == SIG_ERR) {
+        fputs("\t\t\t\t\tAn error occurred when setting up SIGWINCH signal handler.\n", stderr);
+    }
+}    // Done setting up ncurses
+
 
 int main(int argc, char * const * argv) {
     int n_screen_log_lines = 5;
@@ -99,26 +144,22 @@ int main(int argc, char * const * argv) {
     }
     log_file = fopen(filename, "w");
     
-    // Set up for ncurses
-    const char* term_type = getenv("TERM");
+    // Set up ncurses
+    term_type = getenv("TERM");
     if (term_type == NULL || *term_type == '\0') {
         term_type = "unknown";
     }
-    FILE* term_in = fopen("/dev/tty", "r");
+    term_in = fopen("/dev/tty", "r");
     if (term_in == NULL) {
         perror("fopen(/dev/tty)");
         return 1;
     }
-    SCREEN* main_screen = newterm(term_type, stdout, term_in);
-    set_term(main_screen);
-    scrollok(stdscr, TRUE);
-    leaveok(stdscr, TRUE);
-    idlok(stdscr, TRUE);
+    setup_ncurses();
     // Done setting up ncurses
 
     // Read input and write output loop
     while(fgets_return != NULL) {
-        printw("%s", buffer[buf_index]);
+        printw("%s\r", buffer[buf_index]);
         refresh();      // Ask ncurses to update the screen.
         fputs(buffer[buf_index], log_file); 
         buf_index++;
