@@ -24,6 +24,7 @@
 #include <curses.h>
 #include <stdlib.h>
 #include <string.h>
+#include <term.h>
 #include <unistd.h>
 // For sigwinch
 #include <signal.h>
@@ -33,7 +34,7 @@
 
 const char* term_type;
 FILE* term_in;
-int ncurses_active = TRUE;
+volatile int ncurses_active = TRUE;
 static void setup_ncurses();
 
 static void catch_alarm(int signo) {
@@ -60,12 +61,11 @@ static void catch_sigwinch(int signo) {
 
 
 static void setup_ncurses() {
-    ncurses_active = TRUE;
     SCREEN* main_screen = newterm(term_type, stdout, term_in);
     set_term(main_screen);
     scrollok(stdscr, TRUE);  // If enabled the window is scrolled up one line when reaching bottom
-    leaveok(stdscr, TRUE);
     idlok(stdscr, TRUE);     // Use the hardware insert/delete line feature of terminals so equipped
+    ncurses_active = TRUE;
     //printf("\t\t\t\t\tncurses set up.\n");
     if (signal(SIGWINCH, catch_sigwinch) == SIG_ERR) {
         fputs("\t\t\t\t\tAn error occurred when setting up SIGWINCH signal handler.\n", stderr);
